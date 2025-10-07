@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Canton Quiz Challenge — Day 2</title>
+  <style>
+    :root{
+      --bg:#e6f0ff; /* soft blue */
+      --card:#ffffff;
+      --accent-1:#1e88e5; /* deep blue */
+      --accent-2:#6ec6ff; /* light cyan */
+      --accent-3:#ffca28; /* warm yellow */
+      --text:#0b2340;
+      --muted:#586f86;
+      --success:#2e7d32;
+      --danger:#c62828;
+      --glass: rgba(255,255,255,0.6);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      background: linear-gradient(180deg,var(--bg), #f7fbff 60%);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:32px;
+      display:flex; align-items:center; justify-content:center; min-height:100vh;
+    }
+    .container{width:100%; max-width:920px}
+
+    header{display:flex; align-items:center; gap:16px; margin-bottom:18px}
+    .logo{
+      width:64px; height:64px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+      background: linear-gradient(135deg,var(--accent-1), var(--accent-2)); color:white; font-weight:700; font-size:18px; box-shadow:0 8px 24px rgba(30,136,229,0.18)
+    }
+    h1{margin:0; font-size:22px}
+    p.lead{margin:0; color:var(--muted)}
+
+    .card{background:var(--card); border-radius:16px; padding:20px; box-shadow:0 8px 30px rgba(16,36,71,0.08)}
+
+    .quiz-header{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .progress{height:10px; background:linear-gradient(90deg,var(--accent-2), var(--accent-1)); border-radius:999px; width:100%; overflow:hidden}
+    .progress-inner{height:100%; width:0%; background:linear-gradient(90deg,var(--accent-1), var(--accent-2)); transition:width .35s ease}
+
+    .question-wrap{margin-top:18px}
+    .question{font-size:18px; margin-bottom:12px}
+    .options{display:grid; gap:10px}
+    .option{border-radius:10px; padding:12px; cursor:pointer; border:1px solid rgba(11,35,64,0.06); background:linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.9));}
+    .option:hover{transform:translateY(-2px); box-shadow:0 6px 20px rgba(16,36,71,0.06)}
+    .option.selected{outline:3px solid rgba(30,136,229,0.15)}
+
+    .controls{display:flex; gap:8px; margin-top:18px; justify-content:flex-end}
+    button.btn{background:var(--accent-1); color:white; border:none; padding:10px 14px; border-radius:9px; cursor:pointer; font-weight:600}
+    button.btn.secondary{background:transparent; border:1px solid rgba(11,35,64,0.08); color:var(--text)}
+
+    .result{display:none; padding:18px; border-radius:12px; margin-top:18px}
+    .result.show{display:block}
+    .result h2{margin:0 0 6px 0}
+    .answers{margin-top:12px}
+    .answer-row{padding:10px; border-radius:10px; margin-bottom:8px; background:linear-gradient(180deg, rgba(250,250,250,0.8), rgba(250,250,250,0.95)); border:1px solid rgba(11,35,64,0.04)}
+    .correct{color:var(--success); font-weight:700}
+    .wrong{color:var(--danger); font-weight:700}
+
+    footer{margin-top:14px; color:var(--muted); font-size:13px}
+
+    /* responsive */
+    @media (max-width:640px){body{padding:18px}.logo{width:48px;height:48px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">C</div>
+      <div>
+        <h1>Canton Quiz Challenge — Day 2</h1>
+        <p class="lead">Blue theme · colourful UI · 10 questions · good luck!</p>
+      </div>
+    </header>
+
+    <div class="card" id="quizCard">
+      <div class="quiz-header">
+        <div style="flex:1; margin-right:18px">
+          <div style="display:flex; gap:10px; align-items:center">
+            <strong id="qIndex">Question 1</strong>
+            <div style="flex:1">
+              <div class="progress" aria-hidden="true"><div class="progress-inner" id="progressInner"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="min-width:140px; text-align:right">
+          <div style="font-size:13px; color:var(--muted)">Score</div>
+          <div id="score">0 / 10</div>
+        </div>
+      </div>
+
+      <div class="question-wrap">
+        <div class="question" id="questionText">Loading...</div>
+        <div class="options" id="optionsContainer"></div>
+
+        <div class="controls">
+          <button class="btn secondary" id="prevBtn">Previous</button>
+          <button class="btn" id="nextBtn">Next</button>
+        </div>
+
+        <div class="result" id="resultBox">
+          <h2>Your Results</h2>
+          <div id="summaryText"></div>
+          <div class="answers" id="answersList"></div>
+          <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end">
+            <button class="btn secondary" id="retryBtn">Retry</button>
+            <button class="btn" id="downloadBtn">Download Results</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer style="text-align:center">Project: <strong>Canton Quiz Challenge Day2</strong> · Theme: Blue · Generated quiz</footer>
+  </div>
+
+  <script>
+    // Questions sourced from the Canton "7Ridge" ecosystem page (10 items)
+    const QUESTIONS = [
+      { q: "What is 7Ridge’s relationship to the Global Synchronizer Foundation?",
+        options: ["It is a competitor","It is a founding member","It is unrelated","It is a regulatory body"],
+        answer: 1
+      },
+      { q: "What solution does 7Ridge provide on the Canton Network?", options:["A decentralized file storage system","A native identity and verified credentials solution","A decentralized exchange protocol","A blockchain oracle network"], answer:1 },
+      { q: "What is the name given to the identity & credential solution provided by 7Ridge?", options:["7Key","7ID","7Trust","7Auth"], answer:2 },
+      { q: "On the Canton Network, 7Ridge is involved in which of the following roles?", options:["Wallet provider only","Validator only","Governance, Apps, Validator","Miner"], answer:2 },
+      { q: "Which of these is not listed as a “Network Utility” for 7Ridge?", options:["On-chain data","Token issuance","Identity & credentials","Verified credentials"], answer:1 },
+      { q: "Which “Use Cases” are mentioned on the Canton site associated with 7Ridge / network?", options:["Crypto derivatives","24×7 on-chain financing","Stablecoin payments","All of the above"], answer:3 },
+      { q: "Which of the following is NOT a “Connected to” relation for 7Ridge as per the web page?", options:["Global Synchronizer","Canton Network","Ethereum mainnet","(No other listed)"], answer:2 },
+      { q: "Which of these is stated as a role of 7Ridge in governance?", options:["Fee collector","Validator","Liquidity provider","Token issuer"], answer:1 },
+      { q: "Which phrase best describes how 7Ridge’s identity solution is used on the Canton network?", options:["It replaces all public keys","It is leveraged by apps and services","It is only for internal use","It is exclusively for validators"], answer:1 },
+      { q: "What is the base domain of 7Ridge as listed on the Canton page?", options:["7ridge.org","7ridge.network","7ridge.com","7ridge.io"], answer:2 }
+    ];
+
+    // State
+    let current = 0;
+    const userAnswers = new Array(QUESTIONS.length).fill(null);
+
+    // DOM refs
+    const qIndexEl = document.getElementById('qIndex');
+    const questionText = document.getElementById('questionText');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const scoreEl = document.getElementById('score');
+    const progressInner = document.getElementById('progressInner');
+    const resultBox = document.getElementById('resultBox');
+    const summaryText = document.getElementById('summaryText');
+    const answersList = document.getElementById('answersList');
+    const retryBtn = document.getElementById('retryBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    function renderQuestion(){
+      const item = QUESTIONS[current];
+      qIndexEl.textContent = `Question ${current+1} of ${QUESTIONS.length}`;
+      questionText.textContent = item.q;
+      optionsContainer.innerHTML = '';
+      item.options.forEach((opt, i)=>{
+        const btn = document.createElement('div');
+        btn.className='option';
+        btn.tabIndex=0;
+        btn.setAttribute('role','button');
+        btn.textContent = opt;
+        if(userAnswers[current] === i) btn.classList.add('selected');
+        btn.addEventListener('click', ()=> selectOption(i));
+        btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') selectOption(i) });
+        optionsContainer.appendChild(btn);
+      });
+
+      // update nav
+      prevBtn.disabled = current === 0;
+      nextBtn.textContent = current === QUESTIONS.length -1 ? 'Submit' : 'Next';
+
+      // progress
+      const pct = Math.round((current/QUESTIONS.length)*100);
+      progressInner.style.width = pct + '%';
+
+      // score
+      const sc = computeScore();
+      scoreEl.textContent = `${sc} / ${QUESTIONS.length}`;
+    }
+
+    function selectOption(idx){
+      userAnswers[current] = idx;
+      // update selected class
+      [...optionsContainer.children].forEach((el,i)=> el.classList.toggle('selected', i===idx));
+      // update score live
+      scoreEl.textContent = `${computeScore()} / ${QUESTIONS.length}`;
+    }
+
+    prevBtn.addEventListener('click', ()=>{
+      if(current>0){ current--; renderQuestion(); }
+    });
+    nextBtn.addEventListener('click', ()=>{
+      if(current < QUESTIONS.length -1){ current++; renderQuestion(); }
+      else handleSubmit();
+    });
+
+    function computeScore(){
+      let s=0; for(let i=0;i<QUESTIONS.length;i++){ if(userAnswers[i]===QUESTIONS[i].answer) s++; }
+      return s;
+    }
+
+    function handleSubmit(){
+      const score = computeScore();
+      const pct = Math.round((score/QUESTIONS.length)*100);
+      summaryText.innerHTML = `<strong>${score} / ${QUESTIONS.length}</strong> — ${pct}%`;
+      // list answers
+      answersList.innerHTML='';
+      QUESTIONS.forEach((it, i)=>{
+        const row = document.createElement('div'); row.className='answer-row';
+        const user = userAnswers[i] == null ? 'No answer' : it.options[userAnswers[i]];
+        const correct = it.options[it.answer];
+        const ok = userAnswers[i] === it.answer;
+        row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div style="max-width:78%"><strong>Q${i+1}.</strong> ${it.q}<div style='color:var(--muted); font-size:13px; margin-top:6px'>Your answer: <span class="${ok? 'correct':'wrong'}">${user}</span></div></div><div style="text-align:right"><div style="font-size:13px;color:var(--muted)">Correct</div><div style="font-weight:700">${correct}</div></div></div>`;
+        answersList.appendChild(row);
+      });
+
+      // show result
+      resultBox.classList.add('show');
+      // reveal progress to full
+      progressInner.style.width = '100%';
+    }
+
+    retryBtn.addEventListener('click', ()=>{
+      for(let i=0;i<userAnswers.length;i++) userAnswers[i]=null; current=0; resultBox.classList.remove('show'); renderQuestion();
+    });
+
+    downloadBtn.addEventListener('click', ()=>{
+      const payload = {score: computeScore(), total: QUESTIONS.length, percent: Math.round((computeScore()/QUESTIONS.length)*100), answers:userAnswers};
+      const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='canton-quiz-results-day2.json'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // initial render
+    renderQuestion();
+
+  </script>
+</body>
+</html>
